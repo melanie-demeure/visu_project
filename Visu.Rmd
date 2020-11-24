@@ -1,14 +1,47 @@
 ---
-title: "La R&D en France"
+title: "La Recherche publique en France"
 output: 
   flexdashboard::flex_dashboard:
-    orientation: columns
+    orientation: rows
     vertical_layout: fill
+    theme: journal
+    social: menu
+    source_code: embed
+    runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
+library(tidyverse)
+library(ggtext)
+library(ggpubr)
+library(sf)
+library(plotly)
+
+#IMPORTATION DU JEU DE DONNEES
+rdFR <- read.csv("./rd-moyens-administrations.csv", sep = ";")
+
+#AS FACTOR
+for (i in 1:12){
+  rdFR[,i] <- as.factor(rdFR[,i])
+}
+
+#Fond de carte France par region 2014
+reg<-st_read(dsn="regions-20140306-100m-shp/regions-20140306-100m.shp")
+
+reg$nom
+#On enl?ve les DOM TOM
+guadeloupe<-reg[11,]
+guyane<-reg[12,]
+lareunion<-reg[16,]
+martinique<-reg[19,]
+mayotte<-reg[20,]
+
+reg<-reg[-c(11:12,16,19:20),]
 ```
+
+Vision globale
+=======================================================================
 
 Column {data-width=650}
 -----------------------------------------------------------------------
@@ -34,3 +67,183 @@ Column {data-width=350}
 
 ```
 
+La parité dans la recherche
+=======================================================================
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+Les données couvre la période allant de 2001 à 2013. Vous pouvez comparer jusqu'à 3 années différentes.
+
+```{r}
+selectInput("year1", label = "Première année",
+            choices = c(2001:2013), selected = 2001)
+
+selectInput("year2", label = "Deuxième année",
+            choices = c(2001:2013), selected = 2006)
+
+selectInput("year3", label = "Troisième année",
+            choices = c(2001:2013), selected = 2013)
+```
+
+
+Row
+-----------------------------------------------------------------------
+
+### Années du jeu de données
+
+```{r}
+valueBox(12, icon = "fa-hourglass-half")
+```
+
+### Femmes employées
+
+```{r}
+valueBox(13, icon = "fa-female",
+         color="pink")
+```
+
+### Spam per Day
+
+```{r}
+spam <- 18
+valueBox(spam,
+         icon = "fa-trash",
+         color = ifelse(spam > 10, "warning", "primary"))
+```
+
+
+Row
+-----------------------------------------------------------------------
+### Proportion des femmes dans la recherche (% d'ETP)
+```{r}
+
+renderPlot({
+  
+#### ANNEE 1 ################ 
+  par1 <- rdFR %>%
+  filter(code_indicateur=="pers") %>% 
+  filter(sexe!="Non ventile") %>% 
+  filter(annee==input$year1) %>% 
+  group_by(code_region,region,annee,sexe) %>% 
+  summarise(personnel=sum(valeur)) %>% 
+  group_by(region) %>% 
+  mutate(percentage=personnel/sum(personnel)*100) %>% 
+  filter(sexe=="Femmes")
+
+
+#On merge les donnees et le fond de carte
+par11<-merge(x=reg,y=par1,by.x="code_insee",by.y="code_region",all.x=T)
+
+par2001 <- par11 %>%
+  st_transform( crs = 32631 )%>% 
+  ggplot()+
+  geom_sf(aes(fill = as.numeric(percentage))) +
+  scale_fill_gradient(low = "#F1D9F7", high = "#FA28FA", breaks=c(30,35,40,45,49)) +
+  labs(fill = 'Percentage',title=input$year1)+
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank())+
+  theme(plot.title = element_text(hjust = 0.5,size=10))
+
+#### ANNEE 2 ################
+
+par2 <- rdFR %>%
+  filter(code_indicateur=="pers") %>% 
+  filter(sexe!="Non ventile") %>% 
+  filter(annee==input$year2) %>% 
+  group_by(code_region,region,annee,sexe) %>% 
+  summarise(personnel=sum(valeur)) %>% 
+  group_by(region) %>% 
+  mutate(percentage=personnel/sum(personnel)*100) %>% 
+  filter(sexe=="Femmes")
+
+
+#On merge les donn?es et le fond de carte
+par12<-merge(x=reg,y=par2,by.x="code_insee",by.y="code_region",all.x=T)
+
+par2006 <- par12 %>%
+  st_transform( crs = 32631 )%>% 
+  ggplot()+
+  geom_sf(aes(fill = as.numeric(percentage))) +
+  scale_fill_gradient(low = "#F1D9F7", high = "#FA28FA", breaks=c(30,35,40,45,49))+
+  labs(fill = 'Percentage',title=input$year2)+
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank())+
+  theme(plot.title = element_text(hjust = 0.5,size=10))
+
+#### ANNEE 3 ################
+
+par3 <- rdFR %>%
+  filter(code_indicateur=="pers") %>% 
+  filter(sexe!="Non ventile") %>% 
+  filter(annee==input$year3) %>% 
+  group_by(code_region,region,annee,sexe) %>% 
+  summarise(personnel=sum(valeur)) %>% 
+  group_by(region) %>% 
+  mutate(percentage=personnel/sum(personnel)*100) %>% 
+  filter(sexe=="Femmes")
+
+
+#On merge les donn?es et le fond de carte
+par13<-merge(x=reg,y=par2,by.x="code_insee",by.y="code_region",all.x=T)
+
+par2013 <- par12 %>%
+  st_transform( crs = 32631 )%>% 
+  ggplot()+
+  geom_sf(aes(fill = as.numeric(percentage))) +
+  scale_fill_gradient(low = "#F1D9F7", high = "#FA28FA", breaks=c(30,35,40,45,49))+
+  labs(fill = 'Percentage',title=input$year3)+
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank())+
+  theme(plot.title = element_text(hjust = 0.5,size=10))
+
+vision01_13 <- ggpubr::ggarrange(
+  par2001,
+  par2006,
+  par2013,
+  nrow = 1,
+  ncol = 3,
+  common.legend = TRUE,
+  legend = "bottom"
+)
+
+vision01_13
+})
+```
+
+Les institutions
+=======================================================================
+Column {data-width=650}
+-----------------------------------------------------------------------
+### Chart A
+
+```{r}
+
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+
+```
+
+### Chart C
+
+```{r}
+
+```
+
+A propos
+=======================================================================
+
+Ce dashboard vous est proposé par Laurine ALLARD, Mélanie DEMEURE et Loïc STARFELLA de la spécialisation Sciences des données d'[Agrocampus Ouest](https://www.agrocampus-ouest.fr/), promotion 2021.
+
+Vous pourrez trouver les données d'origine sur [data.gouv.fr](https://www.data.gouv.fr/fr/datasets/les-moyens-consacres-a-la-r-d-les-administrations-par-type-d-organisme-mesr/).
