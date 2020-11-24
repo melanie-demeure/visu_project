@@ -76,4 +76,4 @@ test<-merge(x=reg,y=person,by.x="code_insee",by.y="ï..code_zone_geo",all.x=T)
 test %>% ggplot2::ggplot() +
   geom_sf( aes(fill = valeur) )
 
-pubpriv(which(is.na(pubpriv$valeur))
+pubpriv[which(is.na(pubpriv$valeur)),]
