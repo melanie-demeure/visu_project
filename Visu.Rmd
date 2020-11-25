@@ -2,7 +2,7 @@
 title: "La Recherche publique en France"
 output: 
   flexdashboard::flex_dashboard:
-    orientation: rows
+    orientation: columns
     vertical_layout: fill
     theme: journal
     social: menu
@@ -79,14 +79,92 @@ selectInput("year1", label = "Première année",
             choices = c(2001:2013), selected = 2001)
 
 selectInput("year2", label = "Deuxième année",
-            choices = c(2001:2013), selected = 2006)
-
-selectInput("year3", label = "Troisième année",
             choices = c(2001:2013), selected = 2013)
+
+
 ```
 
 
-Row
+Column {data-width=650}
+-----------------------------------------------------------------------
+### Proportion des femmes dans la recherche (% d'ETP)
+```{r}
+
+renderPlot({
+  
+  year1 <- min(input$year1,input$year2)
+  year2 <- max(input$year1,input$year2)
+
+  
+#### ANNEE 1 ################ 
+  par1 <- rdFR %>%
+  filter(code_indicateur=="pers") %>% 
+  filter(sexe!="Non ventile") %>% 
+  filter(annee==year1) %>% 
+  group_by(code_region,region,annee,sexe) %>% 
+  summarise(personnel=sum(valeur)) %>% 
+  group_by(region) %>% 
+  mutate(percentage=personnel/sum(personnel)*100) %>% 
+  filter(sexe=="Femmes")
+
+
+#On merge les donnees et le fond de carte
+par11<-merge(x=reg,y=par1,by.x="code_insee",by.y="code_region",all.x=T)
+
+par2001 <- par11 %>%
+  st_transform( crs = 32631 )%>% 
+  ggplot()+
+  geom_sf(aes(fill = as.numeric(percentage))) +
+  scale_fill_gradient(low = "#F1D9F7", high = "#FA28FA", breaks=c(30,35,40,45,49)) +
+  labs(fill = 'Percentage',title=year1)+
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank())+
+  theme(plot.title = element_text(hjust = 0.5,size=10))
+
+#### ANNEE 2 ################
+
+par2 <- rdFR %>%
+  filter(code_indicateur=="pers") %>% 
+  filter(sexe!="Non ventile") %>% 
+  filter(annee==year2) %>% 
+  group_by(code_region,region,annee,sexe) %>% 
+  summarise(personnel=sum(valeur)) %>% 
+  group_by(region) %>% 
+  mutate(percentage=personnel/sum(personnel)*100) %>% 
+  filter(sexe=="Femmes")
+
+
+#On merge les donn?es et le fond de carte
+par12<-merge(x=reg,y=par2,by.x="code_insee",by.y="code_region",all.x=T)
+
+par2013 <- par12 %>%
+  st_transform( crs = 32631 )%>% 
+  ggplot()+
+  geom_sf(aes(fill = as.numeric(percentage))) +
+  scale_fill_gradient(low = "#F1D9F7", high = "#FA28FA", breaks=c(30,35,40,45,49))+
+  labs(fill = 'Percentage',title=year2)+
+  theme(
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks = element_blank())+
+  theme(plot.title = element_text(hjust = 0.5,size=10))
+
+
+vision01_13 <- ggpubr::ggarrange(
+  par2001,
+  par2013,
+  ncol = 2,
+  common.legend = TRUE,
+  legend = "bottom"
+)
+
+vision01_13
+})
+```
+
+Column {data-width=350}
 -----------------------------------------------------------------------
 
 ### Années du jeu de données
@@ -112,109 +190,6 @@ valueBox(spam,
 ```
 
 
-Row
------------------------------------------------------------------------
-### Proportion des femmes dans la recherche (% d'ETP)
-```{r}
-
-renderPlot({
-  
-#### ANNEE 1 ################ 
-  par1 <- rdFR %>%
-  filter(code_indicateur=="pers") %>% 
-  filter(sexe!="Non ventile") %>% 
-  filter(annee==input$year1) %>% 
-  group_by(code_region,region,annee,sexe) %>% 
-  summarise(personnel=sum(valeur)) %>% 
-  group_by(region) %>% 
-  mutate(percentage=personnel/sum(personnel)*100) %>% 
-  filter(sexe=="Femmes")
-
-
-#On merge les donnees et le fond de carte
-par11<-merge(x=reg,y=par1,by.x="code_insee",by.y="code_region",all.x=T)
-
-par2001 <- par11 %>%
-  st_transform( crs = 32631 )%>% 
-  ggplot()+
-  geom_sf(aes(fill = as.numeric(percentage))) +
-  scale_fill_gradient(low = "#F1D9F7", high = "#FA28FA", breaks=c(30,35,40,45,49)) +
-  labs(fill = 'Percentage',title=input$year1)+
-  theme(
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank(),
-    axis.ticks = element_blank())+
-  theme(plot.title = element_text(hjust = 0.5,size=10))
-
-#### ANNEE 2 ################
-
-par2 <- rdFR %>%
-  filter(code_indicateur=="pers") %>% 
-  filter(sexe!="Non ventile") %>% 
-  filter(annee==input$year2) %>% 
-  group_by(code_region,region,annee,sexe) %>% 
-  summarise(personnel=sum(valeur)) %>% 
-  group_by(region) %>% 
-  mutate(percentage=personnel/sum(personnel)*100) %>% 
-  filter(sexe=="Femmes")
-
-
-#On merge les donn?es et le fond de carte
-par12<-merge(x=reg,y=par2,by.x="code_insee",by.y="code_region",all.x=T)
-
-par2006 <- par12 %>%
-  st_transform( crs = 32631 )%>% 
-  ggplot()+
-  geom_sf(aes(fill = as.numeric(percentage))) +
-  scale_fill_gradient(low = "#F1D9F7", high = "#FA28FA", breaks=c(30,35,40,45,49))+
-  labs(fill = 'Percentage',title=input$year2)+
-  theme(
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank(),
-    axis.ticks = element_blank())+
-  theme(plot.title = element_text(hjust = 0.5,size=10))
-
-#### ANNEE 3 ################
-
-par3 <- rdFR %>%
-  filter(code_indicateur=="pers") %>% 
-  filter(sexe!="Non ventile") %>% 
-  filter(annee==input$year3) %>% 
-  group_by(code_region,region,annee,sexe) %>% 
-  summarise(personnel=sum(valeur)) %>% 
-  group_by(region) %>% 
-  mutate(percentage=personnel/sum(personnel)*100) %>% 
-  filter(sexe=="Femmes")
-
-
-#On merge les donn?es et le fond de carte
-par13<-merge(x=reg,y=par2,by.x="code_insee",by.y="code_region",all.x=T)
-
-par2013 <- par12 %>%
-  st_transform( crs = 32631 )%>% 
-  ggplot()+
-  geom_sf(aes(fill = as.numeric(percentage))) +
-  scale_fill_gradient(low = "#F1D9F7", high = "#FA28FA", breaks=c(30,35,40,45,49))+
-  labs(fill = 'Percentage',title=input$year3)+
-  theme(
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank(),
-    axis.ticks = element_blank())+
-  theme(plot.title = element_text(hjust = 0.5,size=10))
-
-vision01_13 <- ggpubr::ggarrange(
-  par2001,
-  par2006,
-  par2013,
-  nrow = 1,
-  ncol = 3,
-  common.legend = TRUE,
-  legend = "bottom"
-)
-
-vision01_13
-})
-```
 
 Les institutions
 =======================================================================
