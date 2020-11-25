@@ -7,7 +7,6 @@ output:
     theme: journal
     social: menu
     source_code: embed
-    runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -17,6 +16,9 @@ library(ggtext)
 library(ggpubr)
 library(sf)
 library(plotly)
+library(showtext)
+library(ggthemes)
+library(htmltools)
 
 #IMPORTATION DU JEU DE DONNEES
 rdFR <- read.csv("./rd-moyens-administrations.csv", sep = ";")
@@ -40,7 +42,35 @@ mayotte<-reg[20,]
 reg<-reg[-c(11:12,16,19:20),]
 ```
 
-Vision globale
+Dépenses
+=======================================================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+### Dépenses totales par région en R&D en 2001
+
+```{r}
+
+```
+
+### Dépenses totales par région en R&D en 2001
+
+```{r}
+
+```
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+
+```
+
+
+
+Effectifs 
 =======================================================================
 
 Column {data-width=650}
@@ -67,158 +97,155 @@ Column {data-width=350}
 
 ```
 
-La parité dans la recherche
+La parité dans la recherche  {data-orientation=rows}
 =======================================================================
-Column {.sidebar}
+
+Column {data-width=500}
 -----------------------------------------------------------------------
 
-Les données couvre la période allant de 2001 à 2013. Vous pouvez comparer jusqu'à 3 années différentes.
+
+### années sur la période
 
 ```{r}
-selectInput("year1", label = "Première année",
-            choices = c(2001:2013), selected = 2001)
 
-selectInput("year2", label = "Deuxième année",
-            choices = c(2001:2013), selected = 2013)
+par3 <- rdFR %>%
+  filter(code_indicateur=="pers") %>% 
+  filter(sexe!="Non ventile") %>% 
+  group_by(annee,sexe) %>% 
+  summarise(personnel=sum(valeur))%>% 
+  group_by(annee) %>% 
+  mutate(percentage=personnel/sum(personnel)*100) %>% 
+  pivot_wider(names_from = sexe, values_from = c(personnel,percentage))
+
+valueBox(13, icon = "fa-hourglass-half",
+         color="grey87")
+```
+
+
+
+### Evolution de l'effectif en recherche
+
+```{r}
+effectif_total2001 <- sum(par3[1,2],par3[1,3])
+effectif_fem2001 <- sum(par3[1,2])
+
+
+effectif_total2013 <- sum(par3[13,2],par3[13,3])
+effectif_fem2013 <- sum(par3[13,2])
+
+evoleff <- round(((effectif_total2013-effectif_total2001)/effectif_total2001*100),1)
+evoleff_fem <- round(((effectif_fem2013-effectif_fem2001)/effectif_fem2001*100),1)
+  
+valueBox(paste("+",evoleff,"%"),
+         icon = "fa-chart-line",
+         color="grey87")
+```
+
+### Evolution des femmes employées
+
+```{r}
+valueBox(paste("+",evoleff_fem,"%"), icon = "fa-female",
+         color="pink")
+```
+
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Evolution des effectifs par sexe au niveau national
+
+```{r}
+
+par3 %>%
+  plot_ly(x=~annee,y=~personnel_Femmes,
+          type="scatter",mode="line",name="Effectifs féminins",line=list(color='#F436F7',dash='dashed')) %>%
+  add_trace(x = ~annee, y = ~personnel_Hommes,name = 'Effectifs masculins', mode = 'line',line=list(color='#371DCC',dash='dashed')) %>%
+    add_trace(x = ~annee, y = ~percentage_Femmes, name = "Pourcentage de femmes", yaxis = "y2",mode="line",line=list(color='#F291F2',dash='dashed')) %>%
+    add_trace(x = ~annee, y = ~percentage_Hommes, name = "Pourcentage d'hommes", yaxis = "y2",mode="line",line=list(color="#8376CF",dash='dashed')) %>%
+
+  layout(
+    margin = list(l = 50, r = 50, b = 50, t = 50, pad = 4),
+    legend = list(
+      title=list(text='<b>Légende</b>'),
+      orientation = 'h',
+      y = -0.3),
+    xaxis=list(
+      title=list(text='<b>Années</b>')
+    ),
+    yaxis=list(
+      title=list(text='<b>Effectifs</b>')
+    ),
+    yaxis2 = list(
+      overlaying = "y",
+      side = "right",
+      title = list(text='<b>Pourcentage</b>',
+                   y=-100),
+      range=c(0,100)),
+    xaxis = list(title="x"))
+
 
 
 ```
 
 
-Column {data-width=650}
------------------------------------------------------------------------
-### Proportion des femmes dans la recherche (% d'ETP)
+
+
+### Différentiel du pourcentage de femmes dans la recherche entre 2001 et 2013, au niveau régional
 ```{r}
 
-renderPlot({
-  
-  year1 <- min(input$year1,input$year2)
-  year2 <- max(input$year1,input$year2)
-
-  
 #### ANNEE 1 ################ 
-  par1 <- rdFR %>%
+par1 <- rdFR %>%
   filter(code_indicateur=="pers") %>% 
   filter(sexe!="Non ventile") %>% 
-  filter(annee==year1) %>% 
+  filter(annee==2001) %>% 
   group_by(code_region,region,annee,sexe) %>% 
-  summarise(personnel=sum(valeur)) %>% 
+  dplyr::summarise(personnel=sum(valeur)) %>% 
   group_by(region) %>% 
-  mutate(percentage=personnel/sum(personnel)*100) %>% 
+  mutate(percent_2001=personnel/sum(personnel)*100) %>% 
   filter(sexe=="Femmes")
-
-
-#On merge les donnees et le fond de carte
-par11<-merge(x=reg,y=par1,by.x="code_insee",by.y="code_region",all.x=T)
-
-par2001 <- par11 %>%
-  st_transform( crs = 32631 )%>% 
-  ggplot()+
-  geom_sf(aes(fill = as.numeric(percentage))) +
-  scale_fill_gradient(low = "#F1D9F7", high = "#FA28FA", breaks=c(30,35,40,45,49)) +
-  labs(fill = 'Percentage',title=year1)+
-  theme(
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank(),
-    axis.ticks = element_blank())+
-  theme(plot.title = element_text(hjust = 0.5,size=10))
-
-#### ANNEE 2 ################
 
 par2 <- rdFR %>%
   filter(code_indicateur=="pers") %>% 
   filter(sexe!="Non ventile") %>% 
-  filter(annee==year2) %>% 
+  filter(annee==2013) %>% 
   group_by(code_region,region,annee,sexe) %>% 
-  summarise(personnel=sum(valeur)) %>% 
+  dplyr::summarise(personnel=sum(valeur)) %>% 
   group_by(region) %>% 
-  mutate(percentage=personnel/sum(personnel)*100) %>% 
+  mutate(percent_2013=personnel/sum(personnel)*100) %>% 
   filter(sexe=="Femmes")
 
-
 #On merge les donn?es et le fond de carte
-par12<-merge(x=reg,y=par2,by.x="code_insee",by.y="code_region",all.x=T)
+par12<-merge(x=par1,y=par2,by.x="code_region",by.y="code_region",all.x=T)
 
-par2013 <- par12 %>%
+par12 <- par12 %>% 
+  mutate(diff_percent=round((percent_2013-percent_2001),2))
+
+#On merge les donnees et le fond de carte
+par_reg<-merge(x=reg,y=par12,by.x="code_insee",by.y="code_region",all.x=T)
+
+gg_parreg <- par_reg %>%
   st_transform( crs = 32631 )%>% 
   ggplot()+
-  geom_sf(aes(fill = as.numeric(percentage))) +
-  scale_fill_gradient(low = "#F1D9F7", high = "#FA28FA", breaks=c(30,35,40,45,49))+
-  labs(fill = 'Percentage',title=year2)+
+  geom_sf(aes(fill = as.numeric(diff_percent))) +
+  scale_fill_gradient2(midpoint = 0, low = "#1D00AD", mid = "white",
+                            high = "#F436F7")+
+  theme(legend.position="bottom")+
+  labs(fill = 'Différence de pourcentage')+
   theme(
     axis.text.x = element_blank(),
     axis.text.y = element_blank(),
     axis.ticks = element_blank())+
   theme(plot.title = element_text(hjust = 0.5,size=10))
 
+gg_parreg
 
-vision01_13 <- ggpubr::ggarrange(
-  par2001,
-  par2013,
-  ncol = 2,
-  common.legend = TRUE,
-  legend = "bottom"
-)
-
-vision01_13
-})
-```
-
-Column {data-width=350}
------------------------------------------------------------------------
-
-### Années du jeu de données
-
-```{r}
-valueBox(12, icon = "fa-hourglass-half")
-```
-
-### Femmes employées
-
-```{r}
-valueBox(13, icon = "fa-female",
-         color="pink")
-```
-
-### Spam per Day
-
-```{r}
-spam <- 18
-valueBox(spam,
-         icon = "fa-trash",
-         color = ifelse(spam > 10, "warning", "primary"))
-```
-
-
-
-Les institutions
-=======================================================================
-Column {data-width=650}
------------------------------------------------------------------------
-### Chart A
-
-```{r}
 
 ```
 
-Column {data-width=350}
------------------------------------------------------------------------
-
-### Chart B
-
-```{r}
-
-```
-
-### Chart C
-
-```{r}
-
-```
 
 A propos
 =======================================================================
 
-Ce dashboard vous est proposé par Laurine ALLARD, Mélanie DEMEURE et Loïc STARFELLA de la spécialisation Sciences des données d'[Agrocampus Ouest](https://www.agrocampus-ouest.fr/), promotion 2021.
+Ce dashboard vous est proposé par Laurine ALLARD, Mélanie DEMEURE et Loïc STRAFELLA de la spécialisation Sciences des données d'[Agrocampus Ouest](https://www.agrocampus-ouest.fr/), promotion 2021.
 
 Vous pourrez trouver les données d'origine sur [data.gouv.fr](https://www.data.gouv.fr/fr/datasets/les-moyens-consacres-a-la-r-d-les-administrations-par-type-d-organisme-mesr/).
