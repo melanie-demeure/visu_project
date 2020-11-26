@@ -88,64 +88,97 @@ df2 %>%
   theme(plot.title = element_text(size = 12, hjust = 1, vjust = 1.8, face = "bold"))
 
 
-#2001 ----------------------------------------------------
-
-#Préparation du jeu de données pour 2001
-dep_tot<-puborga %>%
-  filter(annee==2001) %>%
-  filter(indicateur=="Depense interieure de R&D")%>%
-  group_by(code_region,region)%>%
-  summarise(Depense_Total=sum(valeur))
-dep_tot<-as.data.frame(dep_tot)
-
-eff_tot<-puborga %>%
-  filter(annee==2001) %>%
-  filter(indicateur=="Effectifs de R&D")%>%
-  group_by(code_region,region)%>%
-  summarise(Effectif_Total=sum(valeur))
-eff_tot<-as.data.frame(eff_tot)
-
-
-dep_eff_tot<-cbind(dep_tot,eff_tot)
-dep_eff_tot<-dep_eff_tot[-1,]
-dep_eff_tot<-dep_eff_tot[-23,]
-dep_eff_tot<-dep_eff_tot[,-(4:5)]
-
-#IMPORTANT jeu de données final 2001
-filter_dep_eff_tot_2001<-
-  dep_eff_tot%>%
-  mutate(Depense_Effectif=Depense_Total/Effectif_Total)
-
-
+# Proportions des types d'administration par région en 2013, à partir des dépenses/effects
 #2013 ----------------------------------------------------
 
 #Préparation du jeu de données pour 2013
 dep_tot_2013<-
-  rdFR %>%
+  puborga %>%
   filter(annee==2013) %>%
   filter(indicateur=="Depense interieure de R&D")%>%
-  group_by(code_region,region)%>%
+  group_by(code_region,region,type_d_administration)%>%
   summarise(Depense_Total=sum(valeur))
-dep_tot_2013<-as.data.frame(dep_tot_2013)
-dep_tot_2013<-dep_tot_2013[-(1:6),]
-dep_tot_2013<-dep_tot_2013[-23,]
 
 eff_tot_2013<-
-  rdFR %>%
-  filter(annee==2001) %>%
+  puborga %>%
+  filter(annee==2013) %>%
   filter(indicateur=="Effectifs de R&D")%>%
-  group_by(code_region,region)%>%
+  group_by(code_region,region,type_d_administration)%>%
   summarise(Effectif_Total=sum(valeur))
-eff_tot_2013<-as.data.frame(eff_tot_2013)
-eff_tot_2013<-eff_tot_2013[-1,]
-eff_tot_2013<-eff_tot_2013[-23,]
 
-dep_eff_tot_2013<-cbind(dep_tot_2013,eff_tot_2013)
-dep_eff_tot_2013<-dep_eff_tot_2013[,-(4:5)]
+dep_eff_tot_2013<-merge(x=dep_tot_2013,y=eff_tot_2013, by = c("type_d_administration", "region", "code_region"))
+dep_eff_tot_2013 <- dep_eff_tot_2013[-c(6,9,13,25,26,29,33,34,41,53,54,57,61,62,69,81,82,85,89,96),]
+
+#IMPORTANT jeu de donnees final 2013
+filter_dep_eff_tot_2013 <-
+  dep_eff_tot_2013 %>%
+  mutate(Depense_Effectif=(Depense_Total/Effectif_Total)*10^6) %>% 
+  arrange(desc(Depense_Effectif))
+
+# Graphique
+filter_dep_eff_tot_2013 %>%
+  ggplot(aes(x = region, y = Depense_Effectif, group = type_d_administration, fill = type_d_administration, width = 0.6)) + 
+  geom_bar(stat = "identity") + 
+  scale_fill_manual(values=c("#CC6666", "#9999CC", "#66CC99", "#E69F00")) +
+  theme_minimal() +
+  coord_flip() + theme_light() + xlab("Régions") +
+  theme(legend.position="bottom") +
+  guides(fill = guide_legend(title = "Types d'administration", title.position = "top", title.hjust = 0.5, nrow = 2)) +
+  theme(legend.title = element_text(face="bold", size = 10)) +
+  labs(caption="Source: data.gouv.fr") +
+  scale_y_continuous(name="Dépenses par ETP (en euros)",labels = scales::comma) + 
+  theme(axis.text.x = element_text(face = "bold"), axis.text.y = element_text(face = "bold"))
 
 
-#IMPORTANT jeu de données final 2013
+
+##Code Melanie!!!
+### Dépenses par ETP au niveau national, en 2013 en fonction des administration
+dep_tot<-
+  puborga %>%
+  filter(annee==2013) %>%
+  filter(code_indicateur=="dird")%>%
+  filter(code_region!=7) %>% 
+  group_by(type_d_administration) %>% 
+  summarise(depense_admin=sum(valeur))
+
+eff_tot<-
+  puborga %>%
+  filter(annee==2001) %>%
+  filter(code_indicateur=="pers")%>%
+  filter(code_region!=7) %>% 
+  group_by(type_d_administration) %>% 
+  summarise(eff_admin=sum(valeur))
+
+dep_eff_tot<-merge(x=dep_tot,y=eff_tot,by.x = "type_d_administration",by.y = "type_d_administration")
+
 filter_dep_eff_tot_2013<-
-  dep_eff_tot_2013%>%
-  mutate(Depense_Effectif=Depense_Total/Effectif_Total)
+  dep_eff_tot%>%
+  mutate(dep_eff_admin=depense_admin/eff_admin*10^6) %>% 
+  arrange(desc(dep_eff_admin))
+
+filter_dep_eff_tot_2013$type_d_administration<-factor(filter_dep_eff_tot_2013$type_d_administration,levels=filter_dep_eff_tot_2013$type_d_administration[order(filter_dep_eff_tot_2013$dep_eff_admin,decreasing = FALSE)])
+
+#Premier graph
+filter_dep_eff_tot_2013 %>% 
+  ggplot()+
+  geom_bar(aes(x=type_d_administration,y = dep_eff_admin, fill=type_d_administration),stat = "identity")+
+  scale_fill_manual(values=c("#CC6666", "#9999CC", "#66CC99", "#E69F00")) +
+  scale_x_discrete(name="")+
+  scale_y_continuous(name="Dépenses par ETP (en euros)",labels = scales::comma)+
+  theme(axis.text.x = element_text(face="bold",size=14, angle=45))+
+  theme_minimal()+
+  coord_flip()+
+  theme(legend.position = "none") +
+  labs(caption="Source: data.gouv.fr") + 
+  theme(axis.text.x = element_text(face = "bold"), axis.text.y = element_text(face = "bold"))
+
+#DEuxieme graph (NE FONCTIONNE PAS)
+filter_dep_eff_tot_2013 %>%
+  ggplot( aes(x=region, y=dep_eff_admin, group=type_d_administration, fill=type_d_administration)) +
+  geom_bar(stat="identity") +
+  ggtitle("Depenses par ETP") +
+  theme(axis.text.x = element_text(face = "bold"),
+        axis.text.y = element_text(face = "bold"))+
+  coord_flip()+
+  scale_y_continuous(name="Dépenses par ETP (euros)",labels = scales::comma)
 
