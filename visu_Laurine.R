@@ -7,16 +7,16 @@ library(dplyr)
 setwd("/Users/laurineallard/Documents/Agrocampus Ouest/Visualisation de données/Projet")
 
 #Importation jeux de donn?es (DOM TOM et autres enlev? ? la main sur excel)
-puborga<-read.csv("./publicorga.csv", sep=";",dec=".", header=TRUE)
-puborga<-as.data.frame(puborga)
+rdFR<-read.csv("./publicorga.csv", sep=";",dec=".", header=TRUE)
+rdFR<-as.data.frame(rdFR)
 
 #Conversion des variables en facteurs
 for (i in 1:12){
-  puborga[,i] <- as.factor(puborga[,i])
+  rdFR[,i] <- as.factor(rdFR[,i])
 }
 
 # SUMMARY DES DONNEES 
-summary(puborga)
+summary(rdFR)
 
 #Fond de carte France par région 2014
 reg<-st_read(dsn="/Users/laurineallard/Documents/Agrocampus Ouest/Visualisation de données/Projet/regions-20140306-100m-shp/regions-20140306-100m.shp")
@@ -40,11 +40,11 @@ reg %>%
   theme_light()
 
 #On merge les donnees et le fond de carte
-test<-merge(x=reg,y=puborga,by.x="code_insee",by.y="code_region",all.x=T)
+test<-merge(x=reg,y=rdFR,by.x="code_insee",by.y="code_region",all.x=T)
 
 ##################################
 # Graphique de l'evolution de l'effectif des types d'administration au niveau national de 2001 à 2013
-df1 <- puborga %>%
+df1 <- rdFR %>%
   filter(indicateur=="Effectifs de R&D")%>%
   filter(code_indicateur=="pers")%>%
   #arrange(type_d_administration) %>%
@@ -67,7 +67,7 @@ df1 %>%
 
 ##################################
 # Graphique de l'evolution de des depenses des types d'administration au niveau national de 2001 à 2013
-df2 <- puborga %>%
+df2 <- rdFR %>%
   filter(indicateur=="Depense interieure de R&D")%>%
   filter(code_indicateur=="dird")%>%
   #arrange(type_d_administration) %>%
@@ -93,14 +93,14 @@ df2 %>%
 
 #Préparation du jeu de données pour 2013
 dep_tot_2013<-
-  puborga %>%
+  rdFR %>%
   filter(annee==2013) %>%
   filter(indicateur=="Depense interieure de R&D")%>%
   group_by(code_region,region,type_d_administration)%>%
   summarise(Depense_Total=sum(valeur))
 
 eff_tot_2013<-
-  puborga %>%
+  rdFR %>%
   filter(annee==2013) %>%
   filter(indicateur=="Effectifs de R&D")%>%
   group_by(code_region,region,type_d_administration)%>%
@@ -134,7 +134,7 @@ filter_dep_eff_tot_2013 %>%
 ##Code Melanie!!!
 ### Dépenses par ETP au niveau national, en 2013 en fonction des administration
 dep_tot<-
-  puborga %>%
+  rdFR %>%
   filter(annee==2013) %>%
   filter(code_indicateur=="dird")%>%
   filter(code_region!=7) %>% 
@@ -142,7 +142,7 @@ dep_tot<-
   summarise(depense_admin=sum(valeur))
 
 eff_tot<-
-  puborga %>%
+  rdFR %>%
   filter(annee==2001) %>%
   filter(code_indicateur=="pers")%>%
   filter(code_region!=7) %>% 
