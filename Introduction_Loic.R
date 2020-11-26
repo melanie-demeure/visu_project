@@ -257,5 +257,34 @@ ggplot(data=filter_barplot_pers_2013,aes(x=region,y=Effectif_Total,fill=region))
   coord_flip()
     
 
+filter_dep_eff_2001<-
+  rdFR %>%
+  filter(annee==2001) %>%
+  filter(indicateur=="Effectifs de R&D")%>%
+  group_by(code_region,region)%>%
+  summarise(Effectif_Total=sum(valeur))%>%
+  filter(indicateur=="Depense interieure de R&D")%>%
+  summarise(Depense_Total=sum(valeur))%>%
+  mutate(Dep_Eff=Effectif_Total/Depense_Total)
 
 
+filter_eff_2001<-
+  rdFR %>%
+  filter(code_indicateur=="pers") %>% 
+  filter(annee==2001) %>%
+  group_by(code_region,region) %>% 
+  summarise(Effectif=sum(valeur)) 
+
+filter_dep_2001<-
+  rdFR %>%
+  filter(code_indicateur=="dird") %>% 
+  filter(annee==2001) %>%
+  group_by(code_region,region) %>% 
+  summarise(Depenses=sum(valeur)) 
+
+filter_dep_eff_2001 <- merge(x=filter_eff_2001,y=filter_dep_2001,by.x="code_region",by.y="code_region",all.x=T)
+
+  
+view(filter_dep_eff_2001)
+
+names(filter_dep_eff_2001)

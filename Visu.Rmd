@@ -2,12 +2,11 @@
 title: "La Recherche publique en France"
 output: 
   flexdashboard::flex_dashboard:
-    orientation: rows
+    orientation: columns
     vertical_layout: fill
     theme: journal
     social: menu
     source_code: embed
-    runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -17,6 +16,9 @@ library(ggtext)
 library(ggpubr)
 library(sf)
 library(plotly)
+library(showtext)
+library(ggthemes)
+library(htmltools)
 
 #IMPORTATION DU JEU DE DONNEES
 rdFR <- read.csv("./rd-moyens-administrations.csv", sep = ";")
@@ -40,210 +42,521 @@ mayotte<-reg[20,]
 reg<-reg[-c(11:12,16,19:20),]
 ```
 
-Vision globale
+Dépenses {data-navmenu="Des disparités régionales"}
 =======================================================================
 
-Column {data-width=650}
+Column 
 -----------------------------------------------------------------------
 
-### Chart A
+### 2001
 
 ```{r}
+filter_dep_2001<-
+  rdFR %>%
+  filter(annee==2001) %>%
+  filter (indicateur=="Depense interieure de R&D")%>%
+  group_by(code_region,region)%>%
+  summarise(Depense_Total=round(sum(valeur),2))
+
+#On merge les donnees et le fond de carte
+merge_2001<-merge(x=reg,y=filter_dep_2001,by.x="code_insee",by.y="code_region",all.x=T)
+
+#Cartographie des des dépenses intérieures en R&D tout type d'administration confondu en 2001
+merge_2001%>%
+  st_transform(crs=32631)%>%
+  ggplot() +
+  geom_sf(aes(fill = as.numeric(Depense_Total))) +
+  scale_fill_gradient(low="#ffffff",high="#048B9A",trans="log",breaks=c(50,150,500,1500,3000)) +
+  labs(fill = "Dépenses (millions d'euros)") +
+  labs(title = "Dépenses totales par régions en R&D",subtitle = "Année : 2001",caption="Source: data.gouv.fr")
+
+
 
 ```
 
-Column {data-width=350}
+### 2013
+
+```{r}
+#Filtrer en fonction de l'annee 2013 et des dÃÂ©penses
+filter_dep_2013<-
+  rdFR %>%
+  filter(annee==2013) %>%
+  filter (indicateur=="Depense interieure de R&D")%>%
+  group_by(code_region,region)%>%
+  summarise(Depense_Total=sum(valeur))
+
+#On merge les donnees et le fond de carte
+merge_2013<-merge(x=reg,y=filter_dep_2013,by.x="code_insee",by.y="code_region",all.x=T)
+
+#Cartographie des des dépenses intérieures en R&D tout type d'administration confondu en 2013
+merge_2013%>%
+  st_transform(crs=32631)%>%
+  ggplot() +
+  geom_sf(aes(fill = as.numeric(Depense_Total))) +
+  scale_fill_gradient(low="#ffffff",high="#048B9A",trans="log",breaks=c(50,150,500,1500,3000)) +
+  labs(fill = "Dépenses (millions d'euros)") +
+  labs(title = "Dépenses totales par régions en R&D",subtitle = "Année : 2013",caption="Source: data.gouv.fr")
+
+
+```
+
+Column {data-width=500}
 -----------------------------------------------------------------------
 
-### Chart B
+### barplot 2001
 
 ```{r}
 
+filter_barplot_dep_2001 <- filter_dep_2001[-c(1,24),]
+
+color4<-c("grey50","grey50","grey50","grey50","grey50","grey50","grey50","blue","grey50","grey50","grey50","grey50","grey50","blue","blue","grey50","grey50","grey50","grey50","grey50","grey50","grey50")
+
+filter_barplot_dep_2001$region<-factor(filter_barplot_dep_2001$region,levels=filter_barplot_dep_2001$region[order(filter_barplot_dep_2001$Depense_Total)])
+
+ggplot(data=filter_barplot_dep_2001,aes(x=region,y=Depense_Total,fill=region))+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position="none")+
+  geom_bar(stat="identity",alpha=0.8)+
+  geom_text(aes(label=round(Depense_Total),hjust=-0.2,vjust=0.40))+
+  scale_fill_manual(values=color4)+
+  scale_y_continuous(breaks=seq(0,6500,1000),limits=c(0,6500))+
+  xlab("Régions")+
+  ylab("Dépenses (millions d'euros)")+
+  labs(title = "Dépenses totales par régions en R&D",subtitle = "Année : 2001",caption="Source: data.gouv.fr")+
+  coord_flip()
+
 ```
 
-### Chart C
+
+### barplot 2013
 
 ```{r}
+filter_barplot_dep_2013 <- filter_dep_2013[-c(1:6,29),]
 
+color4<-c("grey50","grey50","grey50","grey50","grey50","grey50","grey50","blue","grey50","grey50","grey50","grey50","grey50","blue","blue","grey50","grey50","grey50","grey50","grey50","grey50","grey50")
+
+filter_barplot_dep_2013$region<-factor(filter_barplot_dep_2013$region,levels=filter_barplot_dep_2013$region[order(filter_barplot_dep_2013$Depense_Total)])
+
+ggplot(data=filter_barplot_dep_2013,aes(x=region,y=Depense_Total,fill=region))+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position="none")+
+  geom_bar(stat="identity",alpha=0.8)+
+  geom_text(aes(label=round(Depense_Total),hjust=-0.2,vjust=0.40))+
+  scale_fill_manual(values=color4)+
+  scale_y_continuous(breaks=seq(0,6500,1000),limits=c(0,6500))+
+  xlab("Régions")+
+  ylab("Dépenses (millions d'euros)")+
+  labs(title = "Dépenses totales par régions en R&D",subtitle = "Année : 2013",caption="Source: data.gouv.fr")+
+  coord_flip()
 ```
 
-La parité dans la recherche
+
+Effectifs {data-navmenu="Des disparités régionales"}
 =======================================================================
-Column {.sidebar}
+Column {data-width=500}
 -----------------------------------------------------------------------
 
-Les données couvre la période allant de 2001 à 2013. Vous pouvez comparer jusqu'à 3 années différentes.
+### 2001
 
 ```{r}
-selectInput("year1", label = "Première année",
-            choices = c(2001:2013), selected = 2001)
+#Filtrer en fonction de l'annee 2001 et des dÃÂ©penses
+filter_pers_2001<-
+  rdFR %>%
+  filter(annee==2001) %>%
+  filter (indicateur=="Effectifs de R&D")%>%
+  group_by(code_region,region)%>%
+  summarise(Effectif_Total=sum(valeur))
 
-selectInput("year2", label = "Deuxième année",
-            choices = c(2001:2013), selected = 2006)
+#On merge les donnees et le fond de carte
+merge_pers_2001<-merge(x=reg,y=filter_pers_2001,by.x="code_insee",by.y="code_region",all.x=T)
 
-selectInput("year3", label = "Troisième année",
-            choices = c(2001:2013), selected = 2013)
+
+merge_pers_2001%>%
+  st_transform(crs=32631)%>%
+  ggplot() +
+  geom_sf(aes(fill = as.numeric(Effectif_Total))) +
+  scale_fill_gradient(low = "#ffffff", high = "#66CC33",trans="log",breaks=c(400,1100,3000,8000,22000))  +
+  labs(fill = "Effectifs (ETP)") +
+  labs(title = "Effectifs totaux par régions en R&D",subtitle = "Année : 2001",caption="Source: data.gouv.fr")
+
 ```
 
+### 2013
 
-Row
+```{r}
+#Filtrer en fonction de l'annee 2013 et des dÃÂ©penses
+filter_pers_2013<-
+  rdFR %>%
+  filter(annee==2013) %>%
+  filter (indicateur=="Effectifs de R&D")%>%
+  group_by(code_region,region)%>%
+  summarise(Effectif_Total=sum(valeur))
+
+#On merge les donnees et le fond de carte
+merge_pers_2013<-merge(x=reg,y=filter_pers_2013,by.x="code_insee",by.y="code_region",all.x=T)
+
+
+merge_pers_2013%>%
+  st_transform(crs=32631)%>%
+  ggplot() +
+  geom_sf(aes(fill = as.numeric(Effectif_Total))) +
+  scale_fill_gradient(low = "#ffffff", high = "#66CC33",trans="log",breaks=c(400,1100,3000,8000,22000))   +
+  labs(fill = "Effectifs (ETP)") +
+  labs(title = "Effectifs totaux par régions en R&D",subtitle = "Année : 2013",caption="Source: data.gouv.fr")
+
+
+```
+
+Column {data-width=500}
 -----------------------------------------------------------------------
 
-### Années du jeu de données
+### barplot 2001
 
 ```{r}
-valueBox(12, icon = "fa-hourglass-half")
+filter_barplot_pers_2001 <- filter_pers_2001[-c(1,24),]
+
+color<-c("grey50","grey50","grey50","#66CC33","grey50","grey50","#66CC33","grey50","grey50","grey50","grey50","grey50","#66CC33","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50")
+
+filter_barplot_pers_2001$region<-factor(filter_barplot_pers_2001$region,levels=filter_barplot_pers_2001$region[order(filter_barplot_pers_2001$Effectif_Total)])
+ggplot(data=filter_barplot_pers_2001,aes(x=region,y=Effectif_Total,fill=region))+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position="none")+
+  geom_bar(stat="identity",alpha=0.8)+
+  geom_text(aes(label=round(Effectif_Total),hjust=-0.2,vjust=0.40))+
+  scale_fill_manual(values=color)+
+  scale_y_continuous(breaks=seq(0,60000,10000),limits=c(0,60000))+
+  labs(title = "Effectif total par région en R&D",subtitle = "Année : 2001",caption="Source: data.gouv.fr")+
+  xlab("Régions")+
+  ylab("Effectifs (ETP)")+
+  coord_flip()
+
 ```
 
-### Femmes employées
+
+### barplot 2013
 
 ```{r}
-valueBox(13, icon = "fa-female",
-         color="pink")
+filter_barplot_pers_2013 <- filter_pers_2013[-c(1:6,29),]
+
+color2<-c("grey50","grey50","grey50","grey50","grey50","#66CC33","grey50","grey50","#66CC33","grey50","grey50","grey50","grey50","grey50","#66CC33","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50")
+
+filter_barplot_pers_2013$region<-factor(filter_barplot_pers_2013$region,levels=filter_barplot_pers_2013$region[order(filter_barplot_pers_2013$Effectif_Total)])
+ggplot(data=filter_barplot_pers_2013,aes(x=region,y=Effectif_Total,fill=region))+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position="none")+
+  geom_text(aes(label=Effectif_Total,hjust=-0.05,vjust=0.40))+
+  geom_bar(stat="identity",alpha=0.8)+
+  scale_fill_manual(values=color2)+
+  scale_y_continuous(breaks=seq(0,60000,10000),limits=c(0,60000))+
+  xlab("Régions")+
+  ylab("Effectifs (ETP)")+
+  labs(title = "Effectif total par région en R&D",subtitle = "Année : 2013",caption="Source: data.gouv.fr")+
+  coord_flip()
+
+
+
 ```
 
-### Spam per Day
+Par ETP {data-navmenu="Des disparités régionales"}
+=======================================================================
 
-```{r}
-spam <- 18
-valueBox(spam,
-         icon = "fa-trash",
-         color = ifelse(spam > 10, "warning", "primary"))
-```
-
-
-Row
+Column {data-width=500}
 -----------------------------------------------------------------------
-### Proportion des femmes dans la recherche (% d'ETP)
+### 2001
 ```{r}
+#PrÃ©paration du jeu de donnÃ©es pour 2001
+dep_tot<-
+  rdFR %>%
+  filter(annee==2001) %>%
+  filter(indicateur=="Depense interieure de R&D")%>%
+  group_by(code_region,region)%>%
+  summarise(Depense_Total=sum(valeur))
+dep_tot<-as.data.frame(dep_tot)
 
-renderPlot({
-  
-#### ANNEE 1 ################ 
-  par1 <- rdFR %>%
-  filter(code_indicateur=="pers") %>% 
-  filter(sexe!="Non ventile") %>% 
-  filter(annee==input$year1) %>% 
-  group_by(code_region,region,annee,sexe) %>% 
-  summarise(personnel=sum(valeur)) %>% 
-  group_by(region) %>% 
-  mutate(percentage=personnel/sum(personnel)*100) %>% 
-  filter(sexe=="Femmes")
+eff_tot<-
+  rdFR %>%
+  filter(annee==2001) %>%
+  filter(indicateur=="Effectifs de R&D")%>%
+  group_by(code_region,region)%>%
+  summarise(Effectif_Total=sum(valeur))
+eff_tot<-as.data.frame(eff_tot)
+
+
+dep_eff_tot<-merge(x=dep_tot,y=eff_tot,by.x = "region",by.y = "region")
+
+
+#IMPORTANT jeu de donnÃ©es final 2001
+filter_dep_eff_tot_2001<-
+  dep_eff_tot%>%
+  mutate(Depense_Effectif=Depense_Total/Effectif_Total*10^6) %>% 
+  arrange(desc(Depense_Effectif))
+
+#On merge les donnees et le fond de carte
+merge_dep_eff_2001<-merge(x=reg,y=filter_dep_eff_tot_2001,by.x="code_insee",by.y="code_region.x",all.x=T)
+
+merge_dep_eff_2001%>%
+  st_transform(crs=32631)%>%
+  ggplot() +
+  geom_sf(aes(fill = as.numeric(Depense_Effectif))) +
+  scale_fill_gradient(low="#ffffff",high="#048B9A",trans="log") +
+  labs(fill = "Dépenses/Effectifs (millions d'euros/ETP)") +
+  labs(title = "Dépenses totales divisées par les effectifs par régions en R&D",subtitle = "Année : 2001",caption="Source: data.gouv.fr")
+
+```
+
+
+### 2013
+
+```{r}
+#PrÃ©paration du jeu de donnÃ©es pour 2013
+dep_tot_2013<-
+  rdFR %>%
+  filter(annee==2013) %>%
+  filter(indicateur=="Depense interieure de R&D")%>%
+  group_by(code_region,region)%>%
+  summarise(Depense_Total=sum(valeur))
+
+eff_tot_2013<-
+  rdFR %>%
+  filter(annee==2001) %>%
+  filter(indicateur=="Effectifs de R&D")%>%
+  group_by(code_region,region)%>%
+  summarise(Effectif_Total=sum(valeur))
+
+
+
+dep_eff_tot_2013<-merge(x=dep_tot_2013,y=eff_tot_2013,by.x = "region",by.y = "region")
+
+#IMPORTANT jeu de donnÃ©es final 2013
+filter_dep_eff_tot_2013<-
+  dep_eff_tot_2013%>%
+  mutate(Depense_Effectif=Depense_Total/Effectif_Total*10^6) %>% 
+  arrange(desc(Depense_Effectif))
 
 
 #On merge les donnees et le fond de carte
-par11<-merge(x=reg,y=par1,by.x="code_insee",by.y="code_region",all.x=T)
-
-par2001 <- par11 %>%
-  st_transform( crs = 32631 )%>% 
-  ggplot()+
-  geom_sf(aes(fill = as.numeric(percentage))) +
-  scale_fill_gradient(low = "#F1D9F7", high = "#FA28FA", breaks=c(30,35,40,45,49)) +
-  labs(fill = 'Percentage',title=input$year1)+
-  theme(
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank(),
-    axis.ticks = element_blank())+
-  theme(plot.title = element_text(hjust = 0.5,size=10))
-
-#### ANNEE 2 ################
-
-par2 <- rdFR %>%
-  filter(code_indicateur=="pers") %>% 
-  filter(sexe!="Non ventile") %>% 
-  filter(annee==input$year2) %>% 
-  group_by(code_region,region,annee,sexe) %>% 
-  summarise(personnel=sum(valeur)) %>% 
-  group_by(region) %>% 
-  mutate(percentage=personnel/sum(personnel)*100) %>% 
-  filter(sexe=="Femmes")
+merge_dep_eff_2013<-merge(x=reg,y=filter_dep_eff_tot_2013,by.x="code_insee",by.y="code_region.x",all.x=T)
 
 
-#On merge les donn?es et le fond de carte
-par12<-merge(x=reg,y=par2,by.x="code_insee",by.y="code_region",all.x=T)
+#Cartographie des des dÃÂ©penses intÃÂ©rieures en R&D tout type d'administration confondu en 2001
+merge_dep_eff_2013%>%
+  st_transform(crs=32631)%>%
+  ggplot() +
+  geom_sf(aes(fill = as.numeric(Depense_Effectif))) +
+  scale_fill_gradient(low="#ffffff",high="#048B9A",trans="log") +
+  labs(fill = "Dépenses/Effectifs (millions d'euros/ETP") +
+  labs(title = "Dépenses totales divisées par les effectifs par régions en R&D",subtitle = "Année : 2013",caption="Source: data.gouv.fr")
 
-par2006 <- par12 %>%
-  st_transform( crs = 32631 )%>% 
-  ggplot()+
-  geom_sf(aes(fill = as.numeric(percentage))) +
-  scale_fill_gradient(low = "#F1D9F7", high = "#FA28FA", breaks=c(30,35,40,45,49))+
-  labs(fill = 'Percentage',title=input$year2)+
-  theme(
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank(),
-    axis.ticks = element_blank())+
-  theme(plot.title = element_text(hjust = 0.5,size=10))
 
-#### ANNEE 3 ################
+
+```
+
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+### 2001
+```{r}
+filter_dep_eff_tot_2001 <- filter_dep_eff_tot_2001[-c(1,24),]
+
+color5<-c("#ff9933","#ff9933","#ff9933","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50","grey50")
+
+filter_dep_eff_tot_2001$region<-factor(filter_dep_eff_tot_2001$region,levels=filter_dep_eff_tot_2001$region[order(filter_dep_eff_tot_2001$Depense_Effectif)])
+
+ggplot(data=filter_dep_eff_tot_2001,aes(x=region,y=Depense_Effectif,fill=region))+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position="none")+
+  geom_bar(stat="identity",alpha=0.8)+
+  geom_text(aes(label=round(Depense_Effectif),hjust=-0.6,vjust=0.40))+
+  scale_y_continuous(breaks=seq(0,150000,10000),limits=c(0,150000))+
+  scale_fill_manual(values=color5)+
+  xlab("Régions")+
+  ylab("Dépenses/Effectifs (euros/ETP)")+
+  labs(title = "Dépenses totales divisées par les effectifs par régions en R&D",subtitle = "Année : 2001",caption="Source: data.gouv.fr")+
+  coord_flip()
+
+
+
+```
+
+### 2013
+```{r}
+###BARPLOT DÃ©pense/Effectif 2013######
+filter_dep_eff_tot_2013 <- filter_dep_eff_tot_2013[-c(4,24),]
+
+color6<-c("grey50","grey50","grey50","grey50","grey50","grey50","grey50","#ff9933","grey50","grey50","grey50","#ff9933","grey50","grey50","#ff9933","grey50","grey50","grey50","grey50","grey50","grey50","grey50")
+
+
+filter_dep_eff_tot_2013$region<-factor(filter_dep_eff_tot_2013$region,levels=filter_dep_eff_tot_2013$region[order(filter_dep_eff_tot_2013$Depense_Effectif)])
+ggplot(data=filter_dep_eff_tot_2013,aes(x=region,y=Depense_Effectif,fill=region))+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position="none")+
+  geom_bar(stat="identity",alpha=0.8)+
+  geom_text(aes(label=round(Depense_Effectif),hjust=-0.6,vjust=0.40))+
+  scale_y_continuous(breaks=seq(0,150000,10000),limits=c(0,150000))+
+  scale_fill_manual(values=color6)+
+  xlab("Régions")+
+  ylab("Dépenses/Effectifs (euros/ETP)")+
+  labs(title = "Dépenses totales divisées par les effectifs par régions en R&D",subtitle = "Année : 2013", caption="Source: data.gouv.fr")+
+  coord_flip()
+
+```
+
+
+La parité dans la recherche  {data-orientation=rows}
+=======================================================================
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+
+### années sur la période
+
+```{r}
 
 par3 <- rdFR %>%
   filter(code_indicateur=="pers") %>% 
   filter(sexe!="Non ventile") %>% 
-  filter(annee==input$year3) %>% 
-  group_by(code_region,region,annee,sexe) %>% 
-  summarise(personnel=sum(valeur)) %>% 
-  group_by(region) %>% 
+  group_by(annee,sexe) %>% 
+  summarise(personnel=sum(valeur))%>% 
+  group_by(annee) %>% 
   mutate(percentage=personnel/sum(personnel)*100) %>% 
+  pivot_wider(names_from = sexe, values_from = c(personnel,percentage))
+
+valueBox(13, icon = "fa-hourglass-half",
+         color="grey87")
+```
+
+
+
+### Evolution de l'effectif en recherche
+
+```{r}
+effectif_total2001 <- sum(par3[1,2],par3[1,3])
+effectif_fem2001 <- sum(par3[1,2])
+
+
+effectif_total2013 <- sum(par3[13,2],par3[13,3])
+effectif_fem2013 <- sum(par3[13,2])
+
+evoleff <- round(((effectif_total2013-effectif_total2001)/effectif_total2001*100),1)
+evoleff_fem <- round(((effectif_fem2013-effectif_fem2001)/effectif_fem2001*100),1)
+  
+valueBox(paste("+",evoleff,"%"),
+         icon = "fa-chart-line",
+         color="grey87")
+```
+
+### Evolution des femmes employées
+
+```{r}
+valueBox(paste("+",evoleff_fem,"%"), icon = "fa-female",
+         color="pink")
+```
+
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Evolution des effectifs par sexe au niveau national
+
+```{r}
+
+par3 %>%
+  plot_ly(x=~annee,y=~personnel_Femmes,
+          type="scatter",mode="line",name="Effectifs féminins",line=list(color='#F436F7',dash='dashed')) %>%
+  add_trace(x = ~annee, y = ~personnel_Hommes,name = 'Effectifs masculins', mode = 'line',line=list(color='#371DCC',dash='dashed')) %>%
+    add_trace(x = ~annee, y = ~percentage_Femmes, name = "Pourcentage de femmes", yaxis = "y2",mode="line",line=list(color='#F291F2',dash='dashed')) %>%
+    add_trace(x = ~annee, y = ~percentage_Hommes, name = "Pourcentage d'hommes", yaxis = "y2",mode="line",line=list(color="#8376CF",dash='dashed')) %>%
+
+  layout(
+    margin = list(l = 50, r = 50, b = 50, t = 50, pad = 4),
+    legend = list(
+      title=list(text='<b>Légende</b>'),
+      orientation = 'h',
+      y = -0.3),
+    xaxis=list(
+      title=list(text='<b>Années</b>')
+    ),
+    yaxis=list(
+      title=list(text='<b>Effectifs</b>')
+    ),
+    yaxis2 = list(
+      overlaying = "y",
+      side = "right",
+      title = list(text='<b>Pourcentage</b>',
+                   y=-100),
+      range=c(0,100)),
+    xaxis = list(title="x"))
+
+
+
+```
+
+
+
+
+### Différentiel du pourcentage de femmes dans la recherche entre 2001 et 2013, au niveau régional
+```{r}
+
+#### ANNEE 1 ################ 
+par1 <- rdFR %>%
+  filter(code_indicateur=="pers") %>% 
+  filter(sexe!="Non ventile") %>% 
+  filter(annee==2001) %>% 
+  group_by(code_region,region,annee,sexe) %>% 
+  dplyr::summarise(personnel=sum(valeur)) %>% 
+  group_by(region) %>% 
+  mutate(percent_2001=personnel/sum(personnel)*100) %>% 
   filter(sexe=="Femmes")
 
+par2 <- rdFR %>%
+  filter(code_indicateur=="pers") %>% 
+  filter(sexe!="Non ventile") %>% 
+  filter(annee==2013) %>% 
+  group_by(code_region,region,annee,sexe) %>% 
+  dplyr::summarise(personnel=sum(valeur)) %>% 
+  group_by(region) %>% 
+  mutate(percent_2013=personnel/sum(personnel)*100) %>% 
+  filter(sexe=="Femmes")
 
 #On merge les donn?es et le fond de carte
-par13<-merge(x=reg,y=par2,by.x="code_insee",by.y="code_region",all.x=T)
+par12<-merge(x=par1,y=par2,by.x="code_region",by.y="code_region",all.x=T)
 
-par2013 <- par12 %>%
+par12 <- par12 %>% 
+  mutate(diff_percent=round((percent_2013-percent_2001),2))
+
+#On merge les donnees et le fond de carte
+par_reg<-merge(x=reg,y=par12,by.x="code_insee",by.y="code_region",all.x=T)
+
+gg_parreg <- par_reg %>%
   st_transform( crs = 32631 )%>% 
   ggplot()+
-  geom_sf(aes(fill = as.numeric(percentage))) +
-  scale_fill_gradient(low = "#F1D9F7", high = "#FA28FA", breaks=c(30,35,40,45,49))+
-  labs(fill = 'Percentage',title=input$year3)+
+  geom_sf(aes(fill = as.numeric(diff_percent))) +
+  scale_fill_gradient2(midpoint = 0, low = "#1D00AD", mid = "white",
+                            high = "#F436F7")+
+  theme(legend.position="bottom")+
+  labs(fill = 'Différence de pourcentage')+
   theme(
     axis.text.x = element_blank(),
     axis.text.y = element_blank(),
     axis.ticks = element_blank())+
   theme(plot.title = element_text(hjust = 0.5,size=10))
 
-vision01_13 <- ggpubr::ggarrange(
-  par2001,
-  par2006,
-  par2013,
-  nrow = 1,
-  ncol = 3,
-  common.legend = TRUE,
-  legend = "bottom"
-)
+gg_parreg
 
-vision01_13
-})
-```
-
-Les institutions
-=======================================================================
-Column {data-width=650}
------------------------------------------------------------------------
-### Chart A
-
-```{r}
 
 ```
 
-Column {data-width=350}
------------------------------------------------------------------------
-
-### Chart B
-
-```{r}
-
-```
-
-### Chart C
-
-```{r}
-
-```
 
 A propos
 =======================================================================
 
-Ce dashboard vous est proposé par Laurine ALLARD, Mélanie DEMEURE et Loïc STARFELLA de la spécialisation Sciences des données d'[Agrocampus Ouest](https://www.agrocampus-ouest.fr/), promotion 2021.
+Ce dashboard vous est proposé par Laurine ALLARD, Mélanie DEMEURE et Loïc STRAFELLA de la spécialisation Sciences des données d'[Agrocampus Ouest](https://www.agrocampus-ouest.fr/), promotion 2021.
 
 Vous pourrez trouver les données d'origine sur [data.gouv.fr](https://www.data.gouv.fr/fr/datasets/les-moyens-consacres-a-la-r-d-les-administrations-par-type-d-organisme-mesr/).
