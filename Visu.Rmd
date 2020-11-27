@@ -168,7 +168,7 @@ admin1 %>%
   ggplot(aes(x =region, y = percentage,fill=type_d_administration))+
   geom_bar(stat="identity")+
   # geom_col(aes(fill = type_d_administration), width = 0.7)+
-  scale_fill_manual(values=c( "#E69F00","#66CC99","#9999CC","#CC6666"),name = "Type d'administration",breaks = rev(levels(admin1$type_d_administration))) +
+  scale_fill_manual(values=c( "#E69F00","#66CC99","#9999CC","#CC6666"),breaks = rev(levels(admin1$type_d_administration))) +
   # scale_fill_discrete(name = "Type d'administration",breaks = rev(levels(admin1$type_d_administration)))+
   # scale_fill_hue()+
   labs(y="Pourcentage de l'effectif",x="Région")+
@@ -197,7 +197,8 @@ admin1 %>%
   coord_flip()+
   theme_minimal()+
   theme(legend.position="bottom",
-        axis.title.y = element_blank()) +
+        axis.title.y = element_blank(),
+        legend.title = element_blank()) +
   guides(fill=guide_legend(nrow=2,byrow=TRUE)) +
   labs(title="Répartition du type d'administration en 2013 \nau sein des régions",
        caption = "Source : data.gouv")
