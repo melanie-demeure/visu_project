@@ -196,9 +196,10 @@ admin1 %>%
                               "Rhone-Alpes")) +
   coord_flip()+
   theme_minimal()+
-  theme(legend.position="bottom") +
+  theme(legend.position="bottom",
+        axis.title.y = element_blank()) +
   guides(fill=guide_legend(nrow=2,byrow=TRUE)) +
-  labs(title="Répartition du type d'administration en 2013\nau sein des régions",
+  labs(title="Répartition du type d'administration en 2013 \nau sein des régions",
        caption = "Source : data.gouv")
 
 ```
